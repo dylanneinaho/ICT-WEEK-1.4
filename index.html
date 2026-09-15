@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document Design Arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#171B34; --panel:#20264A; --surface:#232A52; --surface2:#2B3363;
+    --ink:#F5F3FF; --ink-soft:#B7B4DA;
+    --coral:#FF6B6B; --coral-dark:#D94E4E;
+    --gold:#FFC857; --gold-dark:#D9A83C;
+    --cyan:#4ECDC4; --cyan-dark:#2FA79E;
+    --violet:#A78BFA; --violet-dark:#7C5CF0;
+    --good:#6BCB77; --bad:#F14C4C;
+    --radius-stage:20px; --radius-pill:999px;
+    --shadow-card:0 4px 0 rgba(0,0,0,0.25);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(circle at 10% 0%, rgba(255,107,107,0.14), transparent 40%),
+      radial-gradient(circle at 90% 10%, rgba(78,205,196,0.14), transparent 42%),
+      radial-gradient(circle at 50% 100%, rgba(167,139,250,0.13), transparent 46%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Nunito', sans-serif;
+    min-height:100vh;
+    display:flex; justify-content:center;
+    padding:28px 16px 60px;
+  }
+  h1,h2,h3,.display{font-family:'Fredoka', sans-serif; font-weight:600; margin:0;}
+  .app{width:100%; max-width:800px;}
+  .stage{
+    background:var(--panel); border:1px solid #323A6B; border-radius:var(--radius-stage);
+    box-shadow:var(--shadow-card); padding:26px 24px 30px; position:relative; overflow:hidden;
+  }
+  .screen{display:none;}
+  .screen.active{display:block; animation:fadeIn .35s ease;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+  @keyframes shake{0%,100%{transform:translateX(0);} 20%{transform:translateX(-8px);} 40%{transform:translateX(7px);} 60%{transform:translateX(-5px);} 80%{transform:translateX(4px);}}
+  .shake{animation:shake .4s ease;}
+
+  .kicker{text-align:center; color:var(--ink-soft); font-size:14px; margin-top:2px;}
+  h1.title{font-size:28px; text-align:center; line-height:1.15; margin-top:6px; color:var(--ink);}
+  h1.title span{color:var(--gold);}
+  .subhead{text-align:center; color:var(--ink-soft); font-size:14.5px; max-width:480px; margin:10px auto 22px; line-height:1.5;}
+  .divider{height:1px; background:#323A6B; margin:20px 0;}
+  .field-label{font-family:'Fredoka',sans-serif; font-size:15px; margin-bottom:10px; color:var(--ink);}
+  .choice-row{display:flex; gap:10px; flex-wrap:wrap;}
+  .choice-btn{flex:1 1 160px; border:2px solid #323A6B; background:var(--surface); border-radius:14px; padding:14px 12px; cursor:pointer; text-align:left; font-family:'Nunito',sans-serif; color:var(--ink); transition:border-color .15s ease, transform .1s ease;}
+  .choice-btn strong{display:block; font-family:'Fredoka',sans-serif; font-size:16px; margin-bottom:2px;}
+  .choice-btn small{color:var(--ink-soft); font-size:12.5px;}
+  .choice-btn:hover{transform:translateY(-1px);}
+  .choice-btn.selected{border-color:var(--cyan); background:#1D3B3B;}
+  .team-inputs{display:none; gap:10px; margin-top:14px;}
+  .team-inputs.show{display:flex; flex-wrap:wrap;}
+  .team-inputs input{flex:1 1 160px; border:2px solid #323A6B; border-radius:10px; padding:10px 12px; font-family:'Nunito',sans-serif; font-size:14px; background:var(--surface); color:var(--ink);}
+  .team-inputs input:nth-of-type(1){border-color:var(--coral);}
+  .team-inputs input:nth-of-type(2){border-color:var(--cyan);}
+  .timer-row{display:flex; align-items:center; gap:12px; margin-top:18px;}
+  .timer-row select{border:2px solid #323A6B; border-radius:10px; padding:8px 10px; font-family:'Nunito',sans-serif; font-size:14px; background:var(--surface); color:var(--ink);}
+
+  .game-grid{display:grid; grid-template-columns:1fr; gap:12px; margin-top:22px;}
+  @media(min-width:560px){ .game-grid{grid-template-columns:1fr 1fr;} }
+  .game-card{border-radius:18px; padding:16px 16px 15px; cursor:pointer; color:#fff; border:none; text-align:left; font-family:'Nunito', sans-serif; transition:transform .12s ease; position:relative; overflow:hidden;}
+  .game-card:hover{transform:translateY(-2px);}
+  .game-card .g-num{font-family:'Fredoka',sans-serif; font-size:12px; opacity:.9;}
+  .game-card h3{font-size:19px; margin:2px 0 5px; color:#fff;}
+  .game-card p{margin:0; font-size:12.5px; line-height:1.45; opacity:.94;}
+  .game-card .emoji{position:absolute; right:10px; bottom:6px; font-size:38px; opacity:.35;}
+  .game-card.c1{background:linear-gradient(150deg, var(--coral), var(--coral-dark));}
+  .game-card.c2{background:linear-gradient(150deg, var(--cyan), var(--cyan-dark));}
+  .game-card.c3{background:linear-gradient(150deg, var(--violet), var(--violet-dark)); grid-column:1/-1;}
+
+  .game-top{display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .back-btn{background:none; border:none; cursor:pointer; font-size:13.5px; color:var(--ink-soft); padding:6px 2px;}
+  .back-btn:hover{color:var(--ink);}
+  .gear-btn{background:var(--surface); border:1px solid #323A6B; cursor:pointer; width:34px; height:34px; border-radius:var(--radius-pill); font-size:15px; color:var(--ink);}
+  .game-title{font-size:19px; text-align:center; flex:1; color:var(--ink);}
+
+  .score-bar{display:flex; align-items:center; justify-content:space-between; background:var(--surface); border:1px solid #323A6B; border-radius:14px; padding:12px 16px; margin-top:16px; gap:10px;}
+  .score-block{text-align:center; min-width:64px;}
+  .score-block .num{font-family:'Fredoka',sans-serif; font-size:24px; line-height:1;}
+  .score-block .lbl{font-size:11px; color:var(--ink-soft); margin-top:2px;}
+  .timer-block{text-align:center;}
+  .timer-block .num{font-family:'Fredoka',sans-serif; font-size:28px; line-height:1; color:var(--ink);}
+  .timer-block .num.low{color:var(--bad); animation:pulse .6s infinite;}
+  @keyframes pulse{0%,100%{transform:scale(1);} 50%{transform:scale(1.12);}}
+  .turn-flag{text-align:center; font-family:'Fredoka',sans-serif; font-size:13px; margin-top:10px; color:var(--ink-soft);}
+  .turn-flag b{color:var(--gold);}
+  .feedback-flash{text-align:center; font-family:'Fredoka',sans-serif; font-size:14px; min-height:20px; margin-top:12px; color:var(--ink-soft);}
+  .feedback-flash.good{color:var(--good);}
+  .feedback-flash.bad{color:var(--bad);}
+  .progress-dots{display:flex; justify-content:center; gap:5px; margin-top:16px; flex-wrap:wrap;}
+  .dot{width:8px; height:8px; border-radius:50%; background:#3A4278;}
+  .dot.done{background:var(--gold);}
+
+  /* ---------- Buzzer Blitz ---------- */
+  .buzzer-zone{
+    margin:24px auto; max-width:360px; min-height:170px; border-radius:18px;
+    background:var(--surface2); border:2px dashed #454C86; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; cursor:pointer; text-align:center; padding:20px;
+  }
+  .buzzer-zone .countnum{font-family:'Fredoka',sans-serif; font-size:52px; color:var(--gold);}
+  .buzzer-zone .countlabel{font-size:13px; color:var(--ink-soft); margin-top:6px;}
+  .buzzer-live{max-width:360px; margin:22px auto 0;}
+  .buzzer-item{text-align:center; font-family:'Fredoka',sans-serif; font-size:21px; margin-bottom:16px;}
+  .buzzer-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .buzz-btn{border:none; border-radius:14px; padding:20px 10px; color:#fff; cursor:pointer; font-family:'Fredoka',sans-serif; font-size:16px; opacity:.35; pointer-events:none; transition:opacity .15s ease, transform .08s ease;}
+  .buzz-btn.live{opacity:1; pointer-events:auto;}
+  .buzz-btn:active{transform:scale(.95);}
+  .buzz-design{background:var(--violet);}
+  .buzz-insert{background:var(--cyan);}
+  .reaction-badge{text-align:center; font-family:'Fredoka',sans-serif; font-size:13px; color:var(--gold); min-height:18px; margin-top:10px;}
+
+  /* ---------- Page Race ---------- */
+  .track-wrap{margin:22px 0 10px;}
+  .track{position:relative; height:46px; border-radius:14px; background:var(--surface2); border:1px solid #454C86; margin-bottom:12px; overflow:hidden;}
+  .track .flag{position:absolute; right:6px; top:50%; transform:translateY(-50%); font-size:20px;}
+  .track .runner{position:absolute; top:50%; transform:translate(-50%,-50%); font-size:26px; transition:left .5s cubic-bezier(.34,1.56,.64,1); left:2%;}
+  .track .lane-label{position:absolute; left:8px; top:4px; font-size:10.5px; font-family:'Fredoka',sans-serif; color:var(--ink-soft); z-index:2;}
+  .race-scenario{background:var(--surface); border:1px solid #323A6B; border-radius:14px; padding:14px 16px; margin:18px 0 14px; font-size:14.5px; line-height:1.5;}
+  .race-scenario .rs-label{font-family:'Fredoka',sans-serif; font-size:12px; color:var(--gold); margin-bottom:4px;}
+  .race-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .race-btn{border:2px solid #323A6B; background:var(--surface); color:var(--ink); border-radius:14px; padding:14px 10px; cursor:pointer; font-family:'Fredoka',sans-serif; font-size:14px;}
+  .race-btn.correct{border-color:var(--good); background:#1E3B24;}
+  .race-btn.incorrect{border-color:var(--bad); background:#3B1E1E;}
+
+  /* ---------- Boss Battle ---------- */
+  .boss-wrap{text-align:center; margin:16px 0 6px;}
+  .boss-hp-track{max-width:360px; margin:8px auto 4px; height:16px; border-radius:999px; background:var(--surface2); border:1px solid #454C86; overflow:hidden;}
+  .boss-hp-fill{height:100%; background:linear-gradient(90deg, var(--coral), var(--gold)); width:100%; transition:width .35s ease;}
+  .boss-hp-label{font-size:11.5px; color:var(--ink-soft); margin-top:4px;}
+  .boss-defeats{font-family:'Fredoka',sans-serif; font-size:12.5px; color:var(--gold); margin-top:4px;}
+  .qtimer-track{max-width:360px; margin:14px auto 4px; height:6px; border-radius:999px; background:var(--surface2); overflow:hidden;}
+  .qtimer-fill{height:100%; background:var(--cyan); width:100%;}
+  .boss-scenario{background:var(--surface); border:1px solid #323A6B; border-radius:14px; padding:14px 16px; margin:12px 0 14px; font-size:14.5px; line-height:1.5; text-align:center;}
+  .boss-row{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+  @media(max-width:440px){ .boss-row{grid-template-columns:1fr 1fr;} }
+  .boss-btn{border:2px solid #323A6B; background:var(--surface); color:var(--ink); border-radius:12px; padding:11px 8px; cursor:pointer; font-family:'Fredoka',sans-serif; font-size:12.5px;}
+  .boss-btn.correct{border-color:var(--good); background:#1E3B24;}
+  .boss-btn.incorrect{border-color:var(--bad); background:#3B1E1E;}
+  .boss-victory-flash{text-align:center; font-family:'Fredoka',sans-serif; color:var(--gold); font-size:16px; min-height:22px; margin-top:6px;}
+
+  /* ---------- End screen ---------- */
+  .end-banner{text-align:center; padding:28px 10px 10px;}
+  .end-banner .medal{font-size:48px;}
+  .end-banner h2{font-size:23px; margin-top:6px; color:var(--ink);}
+  .end-banner p{color:var(--ink-soft); font-size:14px; margin-top:6px;}
+  .end-scores{display:flex; justify-content:center; gap:28px; margin:22px 0;}
+  .end-scores .num{font-family:'Fredoka',sans-serif; font-size:30px;}
+  .end-actions{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:8px;}
+  .btn{border:none; border-radius:var(--radius-pill); padding:11px 20px; cursor:pointer; font-family:'Fredoka',sans-serif; font-size:14px;}
+  .btn.primary{background:var(--cyan); color:#0F2A28;}
+  .btn.ghost{background:var(--surface); color:var(--ink); border:1px solid #323A6B;}
+
+  /* ---------- Confetti ---------- */
+  .confetti-layer{position:fixed; inset:0; pointer-events:none; z-index:80; overflow:hidden;}
+  .confetti-piece{position:absolute; top:-10px; width:8px; height:14px; opacity:.95; animation:confetti-fall 1.1s ease-in forwards;}
+  @keyframes confetti-fall{
+    0%{transform:translateY(0) rotate(0deg); opacity:1;}
+    100%{transform:translateY(320px) rotate(520deg); opacity:0;}
+  }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{position:fixed; inset:0; background:rgba(10,12,24,.6); display:none; align-items:flex-start; justify-content:center; padding:30px 14px; z-index:50; overflow-y:auto;}
+  .modal-overlay.show{display:flex;}
+  .modal{background:var(--panel); border:1px solid #323A6B; border-radius:16px; max-width:560px; width:100%; padding:22px 20px 20px; margin-top:20px; color:var(--ink);}
+  .modal h3{font-size:18px; margin-bottom:4px;}
+  .modal .modal-sub{color:var(--ink-soft); font-size:13px; margin-bottom:14px;}
+  .modal-close{float:right; background:none; border:none; font-size:18px; cursor:pointer; color:var(--ink-soft);}
+  .row-edit{display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; border-bottom:1px solid #323A6B; padding-bottom:8px;}
+  .row-edit input[type=text]{flex:1 1 140px; border:1px solid #454C86; border-radius:8px; padding:7px 9px; font-size:13px; font-family:'Nunito',sans-serif; background:var(--surface); color:var(--ink);}
+  .row-edit select{border:1px solid #454C86; border-radius:8px; padding:7px 6px; font-size:13px; font-family:'Nunito',sans-serif; background:var(--surface); color:var(--ink);}
+  .row-edit .del-row{background:none; border:none; color:var(--bad); cursor:pointer; font-size:16px; padding:2px 6px;}
+  .modal-actions{display:flex; gap:8px; justify-content:space-between; margin-top:16px; flex-wrap:wrap;}
+  .add-row-btn{background:none; border:1px dashed #454C86; border-radius:8px; padding:7px 10px; font-size:12.5px; cursor:pointer; color:var(--ink-soft); width:100%; margin-top:2px;}
+
+  footer.tip{text-align:center; font-size:12px; color:var(--ink-soft); margin-top:16px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage">
+
+    <!-- ============= LANDING ============= -->
+    <section class="screen active" id="screen-landing">
+      <p class="kicker">TLE · ICT · Grade 6 · Arcade Round</p>
+      <h1 class="title">Document Design <span>Arcade</span></h1>
+      <p class="subhead">Three high-energy games on watermarks, page color, borders, page numbers, and headers &amp; footers — reflexes, races, and a boss fight.</p>
+
+      <div class="divider"></div>
+      <div class="field-label">Who's playing?</div>
+      <div class="choice-row">
+        <button class="choice-btn selected" id="modeSoloBtn" onclick="setMode('solo')">
+          <strong>🧑 Solo Play</strong>
+          <small>One learner races the clock for a high score.</small>
+        </button>
+        <button class="choice-btn" id="modeTeamBtn" onclick="setMode('team')">
+          <strong>🤝 Team Battle</strong>
+          <small>Two groups take turns for points.</small>
+        </button>
+      </div>
+      <div class="team-inputs" id="teamInputs">
+        <input type="text" id="teamAName" placeholder="Team A name" value="Team Lightning">
+        <input type="text" id="teamBName" placeholder="Team B name" value="Team Thunder">
+      </div>
+      <div class="timer-row">
+        <span class="field-label" style="margin:0;">Round length</span>
+        <select id="timerSelect">
+          <option value="60">1:00</option>
+          <option value="90" selected>1:30</option>
+          <option value="120">2:00</option>
+        </select>
+      </div>
+
+      <div class="divider"></div>
+      <div class="field-label">Choose a game</div>
+      <div class="game-grid">
+        <button class="game-card c1" onclick="startGame('buzzer')">
+          <div class="g-num">Game 1 · Fastest fingers</div>
+          <h3>Buzzer Blitz</h3>
+          <p>Wait for GO, then tap the right tab before your reflexes give up. Jump the gun and it's a foul!</p>
+          <div class="emoji">⚡</div>
+        </button>
+        <button class="game-card c2" onclick="startGame('race')">
+          <div class="g-num">Game 2 · Head to head</div>
+          <h3>Page Race</h3>
+          <p>Every correct answer sprints your runner down the track. First to the flag wins!</p>
+          <div class="emoji">🏁</div>
+        </button>
+        <button class="game-card c3" onclick="startGame('boss')">
+          <div class="g-num">Game 3 · Final challenge</div>
+          <h3>Boss Battle: The Blank Page Beast</h3>
+          <p>Answer fast to chip away the boss's health bar before the clock — and your question timer — run out.</p>
+          <div class="emoji">👾</div>
+        </button>
+      </div>
+      <footer class="tip">Tap the ⚙ inside any game to edit its items before you play.</footer>
+    </section>
+
+    <!-- ============= GAME: BUZZER BLITZ ============= -->
+    <section class="screen" id="screen-buzzer">
+      <div class="game-top">
+        <button class="back-btn" onclick="goLanding()">← Back</button>
+        <h2 class="game-title">Buzzer Blitz</h2>
+        <button class="gear-btn" onclick="openEditor('buzzer')" title="Edit items">⚙</button>
+      </div>
+      <div class="score-bar" id="buzzer-scorebar"></div>
+      <div class="turn-flag" id="buzzer-turnflag"></div>
+      <div class="buzzer-zone" id="buzzer-zone" onclick="buzzerZoneTap()">
+        <div class="countnum" id="buzzer-countnum">READY?</div>
+        <div class="countlabel" id="buzzer-countlabel">Tap anywhere to start the round</div>
+      </div>
+      <div class="buzzer-live" id="buzzer-live" style="display:none;">
+        <div class="buzzer-item" id="buzzer-itemtext">—</div>
+        <div class="buzzer-row">
+          <button class="buzz-btn buzz-design" id="buzzer-btn-design" onclick="buzzerAnswer('design')">🎨 Design tab</button>
+          <button class="buzz-btn buzz-insert" id="buzzer-btn-insert" onclick="buzzerAnswer('insert')">➕ Insert tab</button>
+        </div>
+      </div>
+      <div class="reaction-badge" id="buzzer-reaction"></div>
+      <div class="feedback-flash" id="buzzer-feedback"></div>
+      <div class="progress-dots" id="buzzer-dots"></div>
+    </section>
+
+    <!-- ============= GAME: PAGE RACE ============= -->
+    <section class="screen" id="screen-race">
+      <div class="game-top">
+        <button class="back-btn" onclick="goLanding()">← Back</button>
+        <h2 class="game-title">Page Race</h2>
+        <button class="gear-btn" onclick="openEditor('race')" title="Edit items">⚙</button>
+      </div>
+      <div class="score-bar" id="race-scorebar"></div>
+      <div class="turn-flag" id="race-turnflag"></div>
+      <div class="track-wrap" id="race-tracks"></div>
+      <div class="race-scenario"><div class="rs-label">What do you need to do?</div><div id="race-scenario">—</div></div>
+      <div class="race-row" id="race-options"></div>
+      <div class="feedback-flash" id="race-feedback"></div>
+    </section>
+
+    <!-- ============= GAME: BOSS BATTLE ============= -->
+    <section class="screen" id="screen-boss">
+      <div class="game-top">
+        <button class="back-btn" onclick="goLanding()">← Back</button>
+        <h2 class="game-title">Boss Battle</h2>
+        <button class="gear-btn" onclick="openEditor('boss')" title="Edit items">⚙</button>
+      </div>
+      <div class="score-bar" id="boss-scorebar"></div>
+      <div class="turn-flag" id="boss-turnflag"></div>
+      <div class="boss-wrap">
+        <div id="boss-mock"></div>
+        <div class="boss-hp-track"><div class="boss-hp-fill" id="boss-hp-fill"></div></div>
+        <div class="boss-hp-label">Blank Page Beast HP</div>
+        <div class="boss-defeats" id="boss-defeats"></div>
+      </div>
+      <div class="qtimer-track"><div class="qtimer-fill" id="boss-qtimer"></div></div>
+      <div class="boss-scenario" id="boss-scenario">—</div>
+      <div class="boss-row" id="boss-options"></div>
+      <div class="boss-victory-flash" id="boss-flash"></div>
+    </section>
+
+    <!-- ============= END SCREEN ============= -->
+    <section class="screen" id="screen-end">
+      <div class="end-banner">
+        <div class="medal" id="end-medal">🏆</div>
+        <h2 id="end-title">Round complete!</h2>
+        <p id="end-sub">Nicely done.</p>
+        <div class="end-scores" id="end-scores"></div>
+        <div class="end-actions">
+          <button class="btn primary" onclick="replaySame()">Play again</button>
+          <button class="btn ghost" onclick="goLanding()">Choose another game</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ============= EDIT MODAL ============= -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEditor()">✕</button>
+    <h3 id="modalTitle">Edit items</h3>
+    <p class="modal-sub" id="modalSub">Changes apply for this session.</p>
+    <div id="modalBody"></div>
+    <button class="add-row-btn" id="modalAddBtn">+ Add item</button>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="resetDefaults()">Reset to defaults</button>
+      <button class="btn primary" onclick="saveEditor()">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const FEATURES = { watermark:"Watermark", pagecolor:"Page Color", pageborder:"Page Borders", pagenumber:"Page Number", headerfooter:"Header & Footer" };
+
+/* ================= DEFAULT DATA ================= */
+const DEFAULTS = {
+  buzzer: [
+    {t:"Watermark", c:"design"}, {t:"Custom text watermark", c:"design"},
+    {t:"Page Color", c:"design"}, {t:"Page Borders", c:"design"},
+    {t:"Border art style", c:"design"}, {t:"A light tint for a certificate", c:"design"},
+    {t:"Page Number", c:"insert"}, {t:"Roman numeral page format", c:"insert"},
+    {t:"Header", c:"insert"}, {t:"Footer", c:"insert"},
+    {t:"School name at the top of every page", c:"insert"}, {t:"Today's date at the bottom of every page", c:"insert"},
+    {t:"Built-in watermark option", c:"design"}, {t:"Page number placement (top/bottom)", c:"insert"}
+  ],
+  race: [
+    {q:"Mark this as a DRAFT so no one submits it by mistake.", c:"watermark"},
+    {q:"Make the certificate background a soft gold color.", c:"pagecolor"},
+    {q:"Add a fancy frame around the invitation.", c:"pageborder"},
+    {q:"Help readers find page 12 in this long reviewer fast.", c:"pagenumber"},
+    {q:"Show the class section on every page automatically.", c:"headerfooter"},
+    {q:"Stop people from thinking this sample is the final copy.", c:"watermark"},
+    {q:"Give the report a pale blue tint for a formal feel.", c:"pagecolor"},
+    {q:"Put a decorative line border on the certificate.", c:"pageborder"},
+    {q:"Number every page with Roman numerals.", c:"pagenumber"},
+    {q:"Put today's date at the bottom of every page.", c:"headerfooter"}
+  ],
+  boss: [
+    {q:"This report needs page numbers so readers can cite exact pages.", c:"pagenumber"},
+    {q:"The invitation needs a colorful, cheerful background.", c:"pagecolor"},
+    {q:"This draft should clearly not be confused with the final version.", c:"watermark"},
+    {q:"The certificate needs a decorative frame around the edge.", c:"pageborder"},
+    {q:"Every page should show the student's name and the date.", c:"headerfooter"},
+    {q:"This story booklet needs numbered pages to be bound correctly.", c:"pagenumber"},
+    {q:"A soft pastel tint would make this party invite pop.", c:"pagecolor"},
+    {q:"This confidential draft needs a faint warning stamped across it.", c:"watermark"},
+    {q:"The award needs a fancy double-line border.", c:"pageborder"},
+    {q:"The subject name should repeat at the top of every worksheet page.", c:"headerfooter"}
+  ]
+};
+let data = JSON.parse(JSON.stringify(DEFAULTS));
+
+/* ================= STATE ================= */
+let state = {
+  mode:'solo', teamAName:'Team Lightning', teamBName:'Team Thunder',
+  roundSeconds:90, currentGame:null, timeLeft:0, timerId:null, turn:'A',
+  scoreA:0, scoreB:0, solo:0, streak:0,
+  order:[], idx:0, total:8,
+  buzzerPhase:'idle', buzzerTimeouts:[], buzzerStart:0,
+  raceTarget:100,
+  bossHp:100, bossMax:100, bossDefeats:0, bossQTimer:null
+};
+
+/* ================= LANDING / MODE ================= */
+function setMode(m){
+  state.mode = m;
+  document.getElementById('modeSoloBtn').classList.toggle('selected', m==='solo');
+  document.getElementById('modeTeamBtn').classList.toggle('selected', m==='team');
+  document.getElementById('teamInputs').classList.toggle('show', m==='team');
+}
+function goLanding(){ clearInterval(state.timerId); clearBuzzerTimeouts(); clearTimeout(state.bossQTimer); showScreen('landing'); }
+function showScreen(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+}
+function shuffled(arr){ const a=arr.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]];} return a; }
+function readSetupFromLanding(){
+  state.teamAName = document.getElementById('teamAName').value.trim() || 'Team A';
+  state.teamBName = document.getElementById('teamBName').value.trim() || 'Team B';
+  state.roundSeconds = parseInt(document.getElementById('timerSelect').value,10);
+}
+function formatTime(sec){ const m=Math.floor(sec/60), s=sec%60; return m+':'+(s<10?'0':'')+s; }
+function escapeHtml(str){ const d=document.createElement('div'); d.textContent=str; return d.innerHTML; }
+function escapeAttr(str){ return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function renderScorebar(key){
+  const bar = document.getElementById(key+'-scorebar');
+  const timeStr = formatTime(state.timeLeft);
+  const lowClass = state.timeLeft<=10 ? 'low' : '';
+  if(state.mode==='team'){
+    bar.innerHTML = `
+      <div class="score-block"><div class="num" style="color:var(--coral)">${state.scoreA}</div><div class="lbl">${escapeHtml(state.teamAName)}</div></div>
+      <div class="timer-block"><div class="num ${lowClass}">${timeStr}</div><div class="lbl">time left</div></div>
+      <div class="score-block"><div class="num" style="color:var(--cyan)">${state.scoreB}</div><div class="lbl">${escapeHtml(state.teamBName)}</div></div>`;
+  }else{
+    bar.innerHTML = `
+      <div class="score-block"><div class="num" style="color:var(--cyan)">${state.solo}</div><div class="lbl">score</div></div>
+      <div class="timer-block"><div class="num ${lowClass}">${timeStr}</div><div class="lbl">time left</div></div>
+      <div class="score-block"><div class="num" style="color:var(--ink-soft)">🔥${state.streak}</div><div class="lbl">streak</div></div>`;
+  }
+}
+function renderTurnFlag(key){
+  const el = document.getElementById(key+'-turnflag');
+  if(state.mode==='team'){
+    const name = state.turn==='A' ? state.teamAName : state.teamBName;
+    el.innerHTML = `Turn: <b>${escapeHtml(name)}</b>`;
+  }else{ el.innerHTML=''; }
+}
+function startTimer(key){
+  clearInterval(state.timerId);
+  state.timeLeft = state.roundSeconds;
+  state.timerId = setInterval(()=>{
+    state.timeLeft--;
+    renderScorebar(key);
+    if(state.timeLeft<=0){ clearInterval(state.timerId); finishGame(); }
+  },1000);
+}
+function switchTurnIfTeam(){ if(state.mode==='team'){ state.turn = state.turn==='A'?'B':'A'; } }
+function renderDots(key, doneCount, total){
+  const wrap = document.getElementById(key+'-dots');
+  if(!wrap) return;
+  let html=''; for(let i=0;i<total;i++){ html += `<div class="dot ${i<doneCount?'done':''}"></div>`; }
+  wrap.innerHTML = html;
+}
+function addPoint(base){
+  if(state.mode==='team'){ if(state.turn==='A') state.scoreA+=base; else state.scoreB+=base; }
+  else{ state.streak++; const bonus = state.streak>=3?5:0; state.solo += base+bonus; }
+}
+
+/* ================= CONFETTI ================= */
+function burstConfetti(){
+  const colors = ['#FF6B6B','#FFC857','#4ECDC4','#A78BFA','#6BCB77'];
+  const layer = document.createElement('div');
+  layer.className='confetti-layer';
+  document.body.appendChild(layer);
+  for(let i=0;i<28;i++){
+    const p = document.createElement('div');
+    p.className='confetti-piece';
+    p.style.left = Math.random()*100+'%';
+    p.style.top = (30+Math.random()*20)+'%';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDelay = (Math.random()*0.2)+'s';
+    layer.appendChild(p);
+  }
+  setTimeout(()=>layer.remove(), 1400);
+}
+
+/* ================= ROUTER ================= */
+function startGame(key){
+  readSetupFromLanding();
+  state.currentGame = key;
+  state.scoreA=0; state.scoreB=0; state.solo=0; state.streak=0; state.turn='A';
+  if(key==='buzzer') initBuzzer();
+  if(key==='race') initRace();
+  if(key==='boss') initBoss();
+}
+function replaySame(){ startGame(state.currentGame); }
+function finishGame(){
+  clearBuzzerTimeouts();
+  clearTimeout(state.bossQTimer);
+  showScreen('end');
+  const medal=document.getElementById('end-medal'), title=document.getElementById('end-title'),
+        sub=document.getElementById('end-sub'), scores=document.getElementById('end-scores');
+  let bonus = state.currentGame==='boss' ? ' Bosses defeated: '+state.bossDefeats+'.' : '';
+  if(state.mode==='team'){
+    let winner, tie=false;
+    if(state.scoreA>state.scoreB) winner=state.teamAName; else if(state.scoreB>state.scoreA) winner=state.teamBName; else tie=true;
+    medal.textContent = tie?'🤝':'🏆';
+    title.textContent = tie?"It's a tie!":winner+' wins this round!';
+    sub.textContent = 'Great reflexes out there!'+bonus;
+    burstConfetti();
+    scores.innerHTML = `
+      <div><div class="num" style="color:var(--coral)">${state.scoreA}</div><div class="lbl" style="font-size:12px;color:var(--ink-soft)">${escapeHtml(state.teamAName)}</div></div>
+      <div><div class="num" style="color:var(--cyan)">${state.scoreB}</div><div class="lbl" style="font-size:12px;color:var(--ink-soft)">${escapeHtml(state.teamBName)}</div></div>`;
+  }else{
+    medal.textContent = state.solo>=60 ? '🌟' : '🏅';
+    title.textContent = 'Final score: '+state.solo;
+    sub.textContent = 'Best streak this round: '+state.streak+'.'+bonus;
+    burstConfetti();
+    scores.innerHTML = `<div><div class="num" style="color:var(--cyan)">${state.solo}</div><div class="lbl" style="font-size:12px;color:var(--ink-soft)">points</div></div>`;
+  }
+}
+
+/* ================= GAME 1: BUZZER BLITZ ================= */
+function clearBuzzerTimeouts(){ state.buzzerTimeouts.forEach(t=>clearTimeout(t)); state.buzzerTimeouts=[]; }
+function initBuzzer(){
+  showScreen('buzzer');
+  state.order = shuffled(data.buzzer);
+  state.total = Math.min(10, state.order.length);
+  state.idx = 0;
+  renderScorebar('buzzer'); renderTurnFlag('buzzer'); renderDots('buzzer',0,state.total);
+  document.getElementById('buzzer-feedback').textContent='';
+  document.getElementById('buzzer-reaction').textContent='';
+  buzzerReadyState();
+  startTimer('buzzer');
+}
+function buzzerReadyState(){
+  state.buzzerPhase = 'idle';
+  document.getElementById('buzzer-zone').style.display='flex';
+  document.getElementById('buzzer-live').style.display='none';
+  document.getElementById('buzzer-countnum').textContent='READY?';
+  document.getElementById('buzzer-countlabel').textContent='Tap anywhere in this box to start the round';
+  document.getElementById('buzzer-btn-design').classList.remove('live');
+  document.getElementById('buzzer-btn-insert').classList.remove('live');
+}
+function buzzerZoneTap(){
+  if(state.buzzerPhase!=='idle') return;
+  state.buzzerPhase='counting';
+  const seq = ['3','2','1','GO!'];
+  const numEl = document.getElementById('buzzer-countnum');
+  const labelEl = document.getElementById('buzzer-countlabel');
+  labelEl.textContent = "Don't tap yet...";
+  seq.forEach((label,i)=>{
+    const t = setTimeout(()=>{ numEl.textContent=label; }, i*650);
+    state.buzzerTimeouts.push(t);
+  });
+  const goDelay = seq.length*650;
+  const t2 = setTimeout(()=>{ buzzerGoLive(); }, goDelay);
+  state.buzzerTimeouts.push(t2);
+}
+function buzzerGoLive(){
+  if(state.idx>=state.total){ state.idx=0; state.order = shuffled(data.buzzer); }
+  state.buzzerPhase='live';
+  document.getElementById('buzzer-zone').style.display='none';
+  document.getElementById('buzzer-live').style.display='block';
+  document.getElementById('buzzer-itemtext').textContent = state.order[state.idx].t;
+  document.getElementById('buzzer-btn-design').classList.add('live');
+  document.getElementById('buzzer-btn-insert').classList.add('live');
+  state.buzzerStart = performance.now();
+}
+function buzzerAnswer(choice){
+  if(state.buzzerPhase!=='live') return;
+  const elapsed = (performance.now()-state.buzzerStart)/1000;
+  const correct = state.order[state.idx].c;
+  const fb = document.getElementById('buzzer-feedback');
+  const rx = document.getElementById('buzzer-reaction');
+  if(choice===correct){
+    const speedBonus = elapsed<0.6 ? 10 : elapsed<1.2 ? 5 : 0;
+    fb.textContent = '✔ Correct!'; fb.className='feedback-flash good';
+    rx.textContent = '⚡ '+elapsed.toFixed(2)+'s'+(speedBonus?' — speed bonus!':'');
+    addPoint(10+speedBonus);
+  }else{
+    fb.textContent = '✘ It was the '+(correct==='design'?'Design tab.':'Insert tab.');
+    fb.className='feedback-flash bad';
+    rx.textContent='';
+    if(state.mode==='solo') state.streak=0;
+  }
+  renderScorebar('buzzer');
+  state.idx++;
+  renderDots('buzzer', Math.min(state.idx,state.total), state.total);
+  switchTurnIfTeam(); renderTurnFlag('buzzer');
+  state.buzzerPhase='idle';
+  const t = setTimeout(buzzerReadyState, 500);
+  state.buzzerTimeouts.push(t);
+}
+document.addEventListener('click', (e)=>{
+  if(state.currentGame!=='buzzer') return;
+  if(state.buzzerPhase==='counting'){
+    const zone = document.getElementById('buzzer-zone');
+    if(zone && zone.contains(e.target)){
+      clearBuzzerTimeouts();
+      const fb = document.getElementById('buzzer-feedback');
+      fb.textContent='✘ Too soon! False start.'; fb.className='feedback-flash bad';
+      document.getElementById('buzzer-reaction').textContent='';
+      if(state.mode==='solo') state.streak=0;
+      switchTurnIfTeam(); renderTurnFlag('buzzer'); renderScorebar('buzzer');
+      state.buzzerPhase='idle';
+      setTimeout(buzzerReadyState, 400);
+    }
+  }
+});
+
+/* ================= GAME 2: PAGE RACE ================= */
+function initRace(){
+  showScreen('race');
+  state.order = shuffled(data.race);
+  state.idx=0;
+  state.raceTarget = 100;
+  renderScorebar('race'); renderTurnFlag('race');
+  document.getElementById('race-feedback').textContent='';
+  renderRaceTracks();
+  raceShowItem();
+  startTimer('race');
+}
+function renderRaceTracks(){
+  const wrap = document.getElementById('race-tracks');
+  if(state.mode==='team'){
+    wrap.innerHTML = `
+      <div class="track"><span class="lane-label" style="color:var(--coral)">${escapeHtml(state.teamAName)}</span><span class="flag">🏁</span><span class="runner" id="race-runnerA" style="left:2%;">🏃</span></div>
+      <div class="track"><span class="lane-label" style="color:var(--cyan)">${escapeHtml(state.teamBName)}</span><span class="flag">🏁</span><span class="runner" id="race-runnerB" style="left:2%;">🏃</span></div>`;
+  }else{
+    wrap.innerHTML = `
+      <div class="track"><span class="lane-label" style="color:var(--cyan)">You</span><span class="flag">🏁</span><span class="runner" id="race-runnerSolo" style="left:2%;">🏃</span></div>`;
+  }
+}
+function updateRaceTrack(){
+  if(state.mode==='team'){
+    const pa = Math.min(96, 2 + (state.scoreA/state.raceTarget)*94);
+    const pb = Math.min(96, 2 + (state.scoreB/state.raceTarget)*94);
+    const ra = document.getElementById('race-runnerA'); if(ra) ra.style.left = pa+'%';
+    const rb = document.getElementById('race-runnerB'); if(rb) rb.style.left = pb+'%';
+    if(state.scoreA>=state.raceTarget || state.scoreB>=state.raceTarget){
+      clearInterval(state.timerId); burstConfetti(); setTimeout(finishGame, 500);
+    }
+  }else{
+    const ps = Math.min(96, 2 + (state.solo/state.raceTarget)*94);
+    const rs = document.getElementById('race-runnerSolo'); if(rs) rs.style.left = ps+'%';
+    if(state.solo>=state.raceTarget){ clearInterval(state.timerId); burstConfetti(); setTimeout(finishGame, 500); }
+  }
+}
+function raceShowItem(){
+  if(state.idx>=state.order.length){ state.idx=0; state.order = shuffled(data.race); }
+  const item = state.order[state.idx];
+  document.getElementById('race-scenario').textContent = item.q;
+  const keys = Object.keys(FEATURES).filter(k=>k!==item.c);
+  const decoy = keys[Math.floor(Math.random()*keys.length)];
+  const options = shuffled([item.c, decoy]);
+  const wrap = document.getElementById('race-options');
+  wrap.innerHTML='';
+  options.forEach(key=>{
+    const btn = document.createElement('button');
+    btn.className='race-btn';
+    btn.textContent = FEATURES[key];
+    btn.onclick = ()=>raceAnswer(key, item.c, btn, wrap);
+    wrap.appendChild(btn);
+  });
+}
+function raceAnswer(pick, correct, btn, wrap){
+  [...wrap.children].forEach(b=>b.style.pointerEvents='none');
+  const fb = document.getElementById('race-feedback');
+  if(pick===correct){
+    btn.classList.add('correct');
+    fb.textContent='✔ Sprint ahead!'; fb.className='feedback-flash good';
+    addPoint(18);
+  }else{
+    btn.classList.add('incorrect');
+    [...wrap.children].forEach(b=>{ if(b.textContent===FEATURES[correct]) b.classList.add('correct'); });
+    fb.textContent='✘ It was '+FEATURES[correct]+'.'; fb.className='feedback-flash bad';
+    if(state.mode==='solo') state.streak=0;
+  }
+  renderScorebar('race'); updateRaceTrack();
+  state.idx++;
+  switchTurnIfTeam(); renderTurnFlag('race');
+  setTimeout(raceShowItem, 600);
+}
+
+/* ================= GAME 3: BOSS BATTLE ================= */
+function bossSvg(hpPct){
+  const mood = hpPct>60 ? 'grumpy' : hpPct>25 ? 'worried' : 'defeated';
+  const eyeShape = mood==='defeated' ? `<line x1="26" y1="40" x2="34" y2="48" stroke="#2B2438" stroke-width="3"/><line x1="34" y1="40" x2="26" y2="48" stroke="#2B2438" stroke-width="3"/>
+    <line x1="46" y1="40" x2="54" y2="48" stroke="#2B2438" stroke-width="3"/><line x1="54" y1="40" x2="46" y2="48" stroke="#2B2438" stroke-width="3"/>`
+    : `<circle cx="30" cy="44" r="5" fill="#2B2438"/><circle cx="50" cy="44" r="5" fill="#2B2438"/>`;
+  const mouth = mood==='grumpy' ? `<path d="M26 62 Q40 54 54 62" stroke="#2B2438" stroke-width="3" fill="none" stroke-linecap="round"/>`
+    : mood==='worried' ? `<line x1="26" y1="60" x2="54" y2="60" stroke="#2B2438" stroke-width="3" stroke-linecap="round"/>`
+    : `<path d="M26 58 Q40 68 54 58" stroke="#2B2438" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  return `<svg width="100" height="118" viewBox="0 0 80 96" id="bossFace">
+    <rect x="6" y="6" width="68" height="84" rx="10" fill="#FFF7EC" stroke="#F2A93B" stroke-width="3"/>
+    <line x1="18" y1="76" x2="40" y2="76" stroke="#F0DEC0" stroke-width="4" stroke-linecap="round"/>
+    ${eyeShape}
+    ${mouth}
+  </svg>`;
+}
+function renderBossHp(){
+  const pct = Math.max(0, (state.bossHp/state.bossMax)*100);
+  document.getElementById('boss-hp-fill').style.width = pct+'%';
+  document.getElementById('boss-mock').innerHTML = bossSvg(pct);
+  document.getElementById('boss-defeats').textContent = state.bossDefeats>0 ? '👑 Bosses defeated: '+state.bossDefeats : '';
+}
+function initBoss(){
+  showScreen('boss');
+  state.order = shuffled(data.boss);
+  state.idx=0;
+  state.bossHp = 100; state.bossMax = 100; state.bossDefeats = 0;
+  renderScorebar('boss'); renderTurnFlag('boss');
+  document.getElementById('boss-flash').textContent='';
+  renderBossHp();
+  bossShowItem();
+  startTimer('boss');
+}
+function bossShowItem(){
+  clearTimeout(state.bossQTimer);
+  if(state.idx>=state.order.length){ state.idx=0; state.order = shuffled(data.boss); }
+  const item = state.order[state.idx];
+  document.getElementById('boss-scenario').textContent = item.q;
+  const keys = Object.keys(FEATURES).filter(k=>k!==item.c);
+  const distractors = shuffled(keys).slice(0,2);
+  const options = shuffled([item.c, ...distractors]);
+  const wrap = document.getElementById('boss-options');
+  wrap.innerHTML='';
+  options.forEach(key=>{
+    const btn = document.createElement('button');
+    btn.className='boss-btn';
+    btn.textContent = FEATURES[key];
+    btn.onclick = ()=>bossAnswer(key, item.c, btn, wrap);
+    wrap.appendChild(btn);
+  });
+  const qbar = document.getElementById('boss-qtimer');
+  qbar.style.transition='none'; qbar.style.width='100%';
+  requestAnimationFrame(()=>{
+    qbar.style.transition='width 6s linear';
+    qbar.style.width='0%';
+  });
+  state.bossQTimer = setTimeout(()=>{
+    bossAnswer(null, item.c, null, wrap);
+  }, 6000);
+}
+function bossAnswer(pick, correct, btn, wrap){
+  clearTimeout(state.bossQTimer);
+  [...wrap.children].forEach(b=>b.style.pointerEvents='none');
+  const flash = document.getElementById('boss-flash');
+  if(pick===correct){
+    if(btn) btn.classList.add('correct');
+    addPoint(15);
+    state.bossHp -= 16;
+    document.getElementById('boss-mock').classList.add('shake');
+    setTimeout(()=>document.getElementById('boss-mock').classList.remove('shake'), 400);
+    if(state.bossHp<=0){
+      state.bossDefeats++;
+      flash.textContent = '💥 BOSS DEFEATED! A new one appears...';
+      state.bossHp = state.bossMax;
+      burstConfetti();
+    }else{
+      flash.textContent='';
+    }
+  }else{
+    if(btn) btn.classList.add('incorrect');
+    [...wrap.children].forEach(b=>{ if(b.textContent===FEATURES[correct]) b.classList.add('correct'); });
+    if(state.mode==='solo') state.streak=0;
+    flash.textContent = pick===null ? '⏱ Too slow!' : '';
+  }
+  renderBossHp();
+  renderScorebar('boss');
+  state.idx++;
+  switchTurnIfTeam(); renderTurnFlag('boss');
+  setTimeout(bossShowItem, 700);
+}
+
+/* ================= EDIT MODAL ================= */
+let editingGame = null;
+function openEditor(key){
+  editingGame = key;
+  document.getElementById('modalOverlay').classList.add('show');
+  if(key==='buzzer'){
+    document.getElementById('modalTitle').textContent='Edit Buzzer Blitz items';
+    document.getElementById('modalSub').textContent='Each item needs text and the correct tab.';
+    renderBuzzerEditor();
+  }else if(key==='race'){
+    document.getElementById('modalTitle').textContent='Edit Page Race items';
+    document.getElementById('modalSub').textContent='Each item needs a short scenario and the correct feature.';
+    renderRaceEditor();
+  }else{
+    document.getElementById('modalTitle').textContent='Edit Boss Battle items';
+    document.getElementById('modalSub').textContent='Each item needs a short scenario and the correct feature.';
+    renderBossEditor();
+  }
+}
+function closeEditor(){ document.getElementById('modalOverlay').classList.remove('show'); editingGame=null; }
+function renderBuzzerEditor(){
+  const body = document.getElementById('modalBody'); body.innerHTML='';
+  data.buzzer.forEach((row,i)=>{
+    body.insertAdjacentHTML('beforeend', `<div class="row-edit" data-i="${i}">
+      <input type="text" value="${escapeAttr(row.t)}" onchange="data.buzzer[${i}].t=this.value">
+      <select onchange="data.buzzer[${i}].c=this.value">
+        <option value="design" ${row.c==='design'?'selected':''}>Design tab</option>
+        <option value="insert" ${row.c==='insert'?'selected':''}>Insert tab</option>
+      </select>
+      <button class="del-row" onclick="removeRow('buzzer',${i})">✕</button>
+    </div>`);
+  });
+  document.getElementById('modalAddBtn').style.display='block';
+  document.getElementById('modalAddBtn').onclick = ()=>{ data.buzzer.push({t:'', c:'design'}); renderBuzzerEditor(); };
+}
+function renderRaceEditor(){
+  const body = document.getElementById('modalBody'); body.innerHTML='';
+  data.race.forEach((row,i)=>{ body.insertAdjacentHTML('beforeend', featureRowHtml('race',row,i)); });
+  document.getElementById('modalAddBtn').style.display='block';
+  document.getElementById('modalAddBtn').onclick = ()=>{ data.race.push({q:'', c:'watermark'}); renderRaceEditor(); };
+}
+function renderBossEditor(){
+  const body = document.getElementById('modalBody'); body.innerHTML='';
+  data.boss.forEach((row,i)=>{ body.insertAdjacentHTML('beforeend', featureRowHtml('boss',row,i)); });
+  document.getElementById('modalAddBtn').style.display='block';
+  document.getElementById('modalAddBtn').onclick = ()=>{ data.boss.push({q:'', c:'watermark'}); renderBossEditor(); };
+}
+function featureRowHtml(key,row,i){
+  let opts=''; Object.keys(FEATURES).forEach(k=>{ opts+=`<option value="${k}" ${row.c===k?'selected':''}>${FEATURES[k]}</option>`; });
+  return `<div class="row-edit" data-i="${i}">
+    <input type="text" value="${escapeAttr(row.q)}" onchange="data.${key}[${i}].q=this.value">
+    <select onchange="data.${key}[${i}].c=this.value">${opts}</select>
+    <button class="del-row" onclick="removeRow('${key}',${i})">✕</button>
+  </div>`;
+}
+function removeRow(key,i){
+  data[key].splice(i,1);
+  if(key==='buzzer') renderBuzzerEditor();
+  if(key==='race') renderRaceEditor();
+  if(key==='boss') renderBossEditor();
+}
+function saveEditor(){ closeEditor(); }
+function resetDefaults(){
+  if(!editingGame) return;
+  data[editingGame] = JSON.parse(JSON.stringify(DEFAULTS[editingGame]));
+  if(editingGame==='buzzer') renderBuzzerEditor();
+  if(editingGame==='race') renderRaceEditor();
+  if(editingGame==='boss') renderBossEditor();
+}
+</script>
+</body>
+</html>
